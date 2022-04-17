@@ -1,0 +1,135 @@
+<html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+        <script src="https://js.stripe.com/v3/"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+<title>FlaskBlog</title>
+    </head>
+<body>
+    <div id="app">
+        <div class="wrap">
+            <p class="title">Create your account</p>
+            <div class="form-wrap">
+                <form id="payment-form">
+                    <input id="email-address" name="email" type="email" autocomplete="email" v-model="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Email address">
+                    <input id="password" name="password" type="password" autocomplete="current-password" v-model="pass" required class="mt-2 appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Password">
+                    <input id="confirm-password" name="confirm-password" type="password" autocomplete="current-password" v-model="confirmPass" required class="mt-2 appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Conrirm password">
+                    <p>{{errorMessage}}</p>
+                    <div class="form-row">
+                    </div>
+                    <p class="mt-6">Choose your payment method</p>
+                    <div id="ideal-bank-element">
+                      </div>
+                      <button type="submit" class="mt-1 group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            sign up</button>
+                    <!-- Used to display form errors. -->
+                    <div id="error-message" role="alert"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+<script>
+    const stripe = Stripe("pk_test_vgoO8HP3qINDDSjvFtywJ8JX");
+    var elements = stripe.elements();
+    var app = new Vue({
+        el: '#app',
+        data: {
+            email: "",
+            pass: "",
+            confirmPass: "",
+            errorMessage: "",
+        },
+        mounted() {
+            this.getForm();
+        },
+        methods: {
+            validate: function() {
+                if (this.pass != this.confirmPass) {
+                    this.errorMessage = "passwords is not equal"
+                    return false
+                }
+                return true
+            },
+            auth: async function () {
+                const response = await fetch("/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "email": this.email,
+                        "password": this.pass
+                    }),
+                });
+            },
+            getForm: async function() {
+                const response = await fetch("/secret", {
+                    method: "GET"
+                });
+                const { clientSecret } = await response.json();
+                var options = {
+                    style: {
+                      base: {
+                        padding: '10px 12px',
+                        color: '#32325d',
+                        fontSize: '16px',
+                        '::placeholder': {
+                          color: '#aab7c4'
+                        },
+                      },
+                    },
+                  };
+                  var idealBank = elements.create('idealBank', options);
+                  idealBank.mount('#ideal-bank-element');
+
+                  var form = document.getElementById('payment-form');
+                  var self = this
+                  form.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    var isValid = self.validate();
+                    console.log(isValid);
+                    if (isValid) {
+                        self.auth();
+                        stripe.confirmIdealPayment(
+                            clientSecret,
+                        {
+                            payment_method: {
+                            ideal: idealBank,
+                            },
+                            return_url: 'http://localhost:5000/checkout/complete',
+                        }
+                        );
+                    }
+                  });
+            }
+        }
+      });
+</script>
+</body>
+<style>
+    body {
+        background-color: blue;
+    }
+    .wrap {
+        width: 400px;
+        height: 330px;
+        top: calc(50% - 200px);
+        left: calc(50% - 200px);
+        position: absolute;
+    }
+    .form-wrap{
+        width: 400px;
+        height: 330px;
+        border-radius: 15px;
+        background-color: white;
+        padding-top: 20px;
+    }
+    .title {
+        text-align: center;
+        color: white;
+        font-size: 20pt;
+    }
+    #payment-form {
+        width: 360px;
+        margin-left: 20px;
+    }
+</style>
+</html>
